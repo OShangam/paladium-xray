@@ -1,15 +1,15 @@
 #pragma once
 
-#include <jni.h>
+#include "class_loader.hpp"
 
-class j_classloader {
+class JClassLoader : public ClassLoader {
 public:
-	j_classloader(JNIEnv* env, jobject class_loader);
-	~j_classloader();
+    JClassLoader(JNIEnv* env, jobject class_loader);
+    virtual ~JClassLoader();
 
-	jclass find_class(const char* class_name);
+    virtual jclass find_class(const char* class_name) override;
 private:
-	JNIEnv* env;
-	jobject classloader;
-	jmethodID m_findClass;
+    JNIEnv* env;
+    jobject classloader;
+    jmethodID m_findClass;
 };

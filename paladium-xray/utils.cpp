@@ -14,7 +14,7 @@ JavaVM* utils::get_jvm_instance()
     return jvm;
 }
 
-j_classloader* utils::get_classloader_by_thread_name(JNIEnv* env, jvmtiEnv* jvmti, const char* thread_name)
+JClassLoader* utils::get_classloader_by_thread_name(JNIEnv* env, jvmtiEnv* jvmti, const char* thread_name)
 {
     jint threadsCount;
     jthread* threads;
@@ -28,9 +28,8 @@ j_classloader* utils::get_classloader_by_thread_name(JNIEnv* env, jvmtiEnv* jvmt
         jvmti->GetThreadInfo(thread, &threadInfo);
 
         if (strcmp(thread_name, threadInfo.name) == 0) {
-            return new j_classloader(env, threadInfo.context_class_loader);
+            return new JClassLoader(env, threadInfo.context_class_loader);
         }
     }
-
     return NULL;
 }

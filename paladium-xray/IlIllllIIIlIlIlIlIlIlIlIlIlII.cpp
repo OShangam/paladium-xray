@@ -1,4 +1,4 @@
-#include "xray.hpp"
+#include "IlIllllIIIlIlIlIlIlIlIlIlIlII.hpp"
 #include "blocks.hpp"
 #include "hook.hpp"
 #include "utils.hpp"
@@ -6,10 +6,6 @@
 
 #include <algorithm>
 #include <mutex>
-#include "imgui/imgui.h"
-#include "imtheme.h"
-#include "imgui/imgui_impl_opengl2.h"
-#include "imgui/imgui_impl_win32.h"
 
 JNIEnv* env;
 
@@ -41,21 +37,10 @@ vec3d* render_pos_vec = new vec3d(0, 0, 0);
 
 std::vector<chunk> chunks;
 std::mutex mutex;
-bool enabled, stop;
 
-// gui
-ImFont* font;
-int min_y_search = 0;
-int max_y_search = 50;
-bool xray::gui_open;
-
-void xray::render()
+void IlIllllIIIlIlIlIlIlIlIlIlIlII::render()
 {
-	if (!enabled)
-	{
-		return;
-	}
-
+	const double distance_threshold = 50.0; // Distance limite
 	for (chunk chunk : chunks)
 	{
 		for (block block : *chunk.blocks)
@@ -79,6 +64,7 @@ void xray::render()
 
 			gl_utils::end();
 			glPopMatrix();
+			
 		}
 	}
 }
@@ -133,7 +119,10 @@ chunk get_chunk_data(int chunk_x, int chunk_z)
 
 	jobject world = env->GetObjectField(mc_instance, the_world_field);
 
-	for (int y = min_y_search; y < max_y_search; ++y)
+	// max y search
+	int max_y = 50;
+
+	for (int y = 0; y < max_y; ++y)
 	{
 		update_render_pos();
 		update_matrix();
@@ -219,30 +208,52 @@ void find_chunks()
 	env->DeleteLocalRef(player);
 }
 
+double distance_between_points(vec3d point1, vec3d point2) {
+	return sqrt(pow(point2.x - point1.x, 2) + pow(point2.y - point1.y, 2) + pow(point2.z - point1.z, 2));
+}
+
 void validate_chunks()
 {
 	jobject world = env->GetObjectField(mc_instance, the_world_field);
+	jobject player = env->GetObjectField(mc_instance, the_player_field);
+	double player_x = env->GetDoubleField(player, player_x_field);
+	double player_y = env->GetDoubleField(player, player_y_field);
+	double player_z = env->GetDoubleField(player, player_z_field);
+	vec3d player_pos(player_x, player_y, player_z);
 
-	for (chunk c : chunks)
-	{
-		std::vector<block>* blocks = c.blocks;
+	const double distance_threshold = 50.0;
 
-		for (int i = 0; i < blocks->size(); i++)
-		{
-			block block = blocks->data()[i];
-			int block_id = get_id_from_block(world, block.position);
+	std::vector<chunk>::iterator it = chunks.begin();
+	while (it != chunks.end()) {
 
-			if (!blocks::is_block_whitelisted(block_id))
-			{
-				blocks->erase(blocks->begin() + i);
+		double chunk_center_x = it->x * 16 + 8;
+		double chunk_center_z = it->z * 16 + 8;
+		double distance = distance_between_points(player_pos, vec3d(chunk_center_x, player_y, chunk_center_z));
+
+		if (distance > distance_threshold) {
+			it = chunks.erase(it);
+		}
+		else {
+			std::vector<block>* blocks = it->blocks;
+
+			for (int i = 0; i < blocks->size(); i++) {
+				block block = blocks->data()[i];
+				int block_id = get_id_from_block(world, block.position);
+
+				if (!blocks::is_block_whitelisted(block_id)) {
+					blocks->erase(blocks->begin() + i);
+					--i;
+				}
 			}
+			++it;
 		}
 	}
 
+	env->DeleteLocalRef(player);
 	env->DeleteLocalRef(world);
 }
 
-void initialize_fields(j_classloader* cl)
+void initialize_fields(JClassLoader* cl)
 {
 	jclass world_class = cl->find_class("net/minecraft/world/World");
 	m_get_block = env->GetMethodID(world_class, "func_147439_a", "(III)Lnet/minecraft/block/Block;");
@@ -298,105 +309,8 @@ void clear_chunks()
 	chunks.clear();
 }
 
-void xray::render_gui()
+void IlIllllIIIlIlIlIlIlIlIlIlIlII::initialize(HMODULE handle)
 {
-	auto io = ImGui::GetIO();
-
-	ImGui::Begin("xray", 0, ImGuiWindowFlags_NoCollapse);
-	ImGui::PushFont(font);
-
-	std::vector<whitelisted_block>* vec = blocks::get_whitelisted_blocks();
-
-	if (ImGui::BeginTabBar("categories"))
-	{
-		if (ImGui::BeginTabItem("settings"))
-		{
-			ImGui::Checkbox("enabled", &enabled);
-			ImGui::SliderInt("min y search", &min_y_search, 0, 255);
-			ImGui::SliderInt("max y search", &max_y_search, 25, 255);
-
-			if (ImGui::Button("reload chunks"))
-			{
-				clear_chunks();
-			}
-
-			ImGui::SameLine();
-
-			if (ImGui::Button("self destruct"))
-			{
-				stop = true;
-			}
-
-			ImGui::EndTabItem();
-		}
-
-		if (ImGui::BeginTabItem("whitelisted blocks"))
-		{
-			int o = 0;
-
-			for (int i = 0; i < vec->size(); ++i)
-			{
-				whitelisted_block b = vec->data()[i];
-				int block_id = b.block_id;
-				ImGui::Text("%i", block_id);
-				ImGui::SameLine();
-
-				if (ImGui::Button("remove"))
-				{
-					vec->erase(vec->begin() + i);
-				}
-
-				if (o < 3 && i != vec->size())
-				{
-					ImGui::SameLine();
-					o++;
-				}
-				else if (o == 3) o = 0;
-			}
-
-			ImGui::EndTabItem();
-		}
-
-		if (ImGui::BeginTabItem("whitelist block"))
-		{
-			static int id;
-			static ImVec4 color = ImVec4(0, 0, 0, 0);
-
-			ImGui::InputInt("block id", &id);
-			ImGui::ColorEdit3("color", (float*)&color);
-
-			if (ImGui::Button("add block"))
-			{
-				vec3f color_vec = vec3f(color.x, color.y, color.z);
-
-				vec->push_back(whitelisted_block(id, color_vec));
-				clear_chunks();
-			}
-
-			ImGui::EndTabItem();
-		}
-
-		ImGui::EndTabBar();
-	}
-
-	ImGui::PopFont();
-	ImGui::End();
-}
-
-void xray::initialize(HMODULE handle)
-{
-	// we don't want paladium to check for imgui.ini file
-	//auto io = ImGui::GetIO();
-	//io.IniFilename = NULL;
-	//io.LogFilename = NULL;
-
-	ImGui::CreateContext();
-	ImGui_ImplWin32_Init(FindWindowA("LWJGL", NULL));
-	ImGui_ImplOpenGL2_Init();
-	imtheme::init_theme();
-
-	font = ImGui::GetIO().Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Arial.ttf", 20);
-
 	hook::initialize_hooks();
 
 	JavaVM* jvm = utils::get_jvm_instance();
@@ -413,7 +327,7 @@ void xray::initialize(HMODULE handle)
 	jvm->GetEnv((void**)&env, JNI_VERSION_1_8);
 	jvm->GetEnv((void**)&jvmti, JVMTI_VERSION_1_2);
 
-	j_classloader* class_loader = utils::get_classloader_by_thread_name(env, jvmti, "Client thread");
+	JClassLoader* class_loader = utils::get_classloader_by_thread_name(env, jvmti, "Client thread");
 
 	if (!class_loader)
 	{
@@ -426,7 +340,7 @@ void xray::initialize(HMODULE handle)
 
 	int i = 2000;
 
-	while (!GetAsyncKeyState(VK_END) && !stop)
+	while (!GetAsyncKeyState(VK_END))
 	{
 		jobject world = env->GetObjectField(mc_instance, the_world_field);
 		bool is_world_null = world == nullptr;
@@ -458,6 +372,5 @@ void xray::initialize(HMODULE handle)
 
 	clear_chunks();
 	hook::uninitialize_hooks();
-	ImGui::DestroyContext();
 	FreeLibraryAndExitThread(handle, 0);
 }
