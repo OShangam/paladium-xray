@@ -6,6 +6,11 @@
 
 #include <algorithm>
 #include <mutex>
+#include "imgui/imgui.h"
+#include "imtheme.h"
+#include "imgui/imgui_impl_opengl2.h"
+#include "imgui/imgui_impl_win32.h"
+
 
 JNIEnv* env;
 
@@ -37,10 +42,24 @@ vec3d* render_pos_vec = new vec3d(0, 0, 0);
 
 std::vector<chunk> chunks;
 std::mutex mutex;
+bool enabled, stop;
+
+// gui
+ImFont* font;
+int min_y_search = 0;
+int max_y_search = 50;
+
+int max_xz_search = 50.0;
+
+bool IlIllllIIIlIlIlIlIlIlIlIlIlII::gui_open;
 
 void IlIllllIIIlIlIlIlIlIlIlIlIlII::render()
 {
-	const double distance_threshold = 50.0; // Distance limite
+	if (!enabled)
+	{
+		return;
+	}
+
 	for (chunk chunk : chunks)
 	{
 		for (block block : *chunk.blocks)
@@ -119,10 +138,7 @@ chunk get_chunk_data(int chunk_x, int chunk_z)
 
 	jobject world = env->GetObjectField(mc_instance, the_world_field);
 
-	// max y search
-	int max_y = 50;
-
-	for (int y = 0; y < max_y; ++y)
+	for (int y = min_y_search; y < max_y_search; ++y) 
 	{
 		update_render_pos();
 		update_matrix();
@@ -221,8 +237,6 @@ void validate_chunks()
 	double player_z = env->GetDoubleField(player, player_z_field);
 	vec3d player_pos(player_x, player_y, player_z);
 
-	const double distance_threshold = 50.0;
-
 	std::vector<chunk>::iterator it = chunks.begin();
 	while (it != chunks.end()) {
 
@@ -230,7 +244,7 @@ void validate_chunks()
 		double chunk_center_z = it->z * 16 + 8;
 		double distance = distance_between_points(player_pos, vec3d(chunk_center_x, player_y, chunk_center_z));
 
-		if (distance > distance_threshold) {
+		if (distance > max_xz_search) {
 			it = chunks.erase(it);
 		}
 		else {
@@ -309,8 +323,118 @@ void clear_chunks()
 	chunks.clear();
 }
 
+void IlIllllIIIlIlIlIlIlIlIlIlIlII::render_gui()
+{
+	auto io = ImGui::GetIO();
+
+	ImGui::Begin("X-Ray", 0, ImGuiWindowFlags_NoCollapse);
+	ImGui::PushFont(font);
+
+	std::vector<whitelisted_block>* vec = blocks::get_whitelisted_blocks();
+
+	if (ImGui::BeginTabBar("Categories"))
+	{
+		if (ImGui::BeginTabItem("Settings"))
+		{
+			ImGui::Checkbox("Enabled", &enabled);
+			ImGui::SliderInt("Min Y Search", &min_y_search, 0, 255);
+			ImGui::SliderInt("Max Y Search", &max_y_search, 25, 255);
+			ImGui::SliderInt("Range", &max_xz_search, 1, 100);
+
+			if (ImGui::Button("Reload Chunks"))
+			{
+				clear_chunks();
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Self Destruct"))
+			{
+				stop = true;
+			}
+
+			ImGui::EndTabItem();
+		}
+
+		if (ImGui::BeginTabItem("Whitelisted Blocks"))
+		{
+			ImGui::Columns(2, NULL, true);
+
+			for (int i = 0; i < vec->size(); ++i)
+			{
+				whitelisted_block b = vec->data()[i];
+				std::string block_name = b.name;
+
+				ImGui::Text("%s", block_name.c_str());
+				ImGui::NextColumn();
+
+				std::string button_id = "Remove##" + std::to_string(i);
+				if (ImGui::Button(button_id.c_str()))
+				{
+					vec->erase(vec->begin() + i);
+					break;
+				}
+
+				ImGui::NextColumn();
+			}
+
+			ImGui::Columns(1);
+			ImGui::EndTabItem();
+		}
+
+		if (ImGui::BeginTabItem("Add Block"))
+		{
+			static std::string name;
+			static int id;
+			static ImVec4 color = ImVec4(0, 0, 0, 0);
+
+			ImGui::InputInt("Block ID", &id);
+			ImGui::ColorEdit3("Color", (float*)&color);
+
+			if (ImGui::Button("Add Block"))
+			{
+				vec3f color_vec = vec3f(color.x, color.y, color.z);
+
+				vec->push_back(whitelisted_block(name, id, color_vec));
+				clear_chunks();
+			}
+			
+			ImGui::EndTabItem();
+		}
+
+		if (ImGui::BeginTabItem("Config"))
+		{
+			ImGui::Text("Your Configs is: %s", blocks::detect_minerals ? "Minerals" : "Chests");
+
+			if (ImGui::Checkbox("Detect Minerals", &blocks::detect_minerals)) {
+				vec->clear();
+				blocks::initialize();
+				clear_chunks();
+			}
+		}
+
+
+		ImGui::EndTabBar();
+	}
+
+	ImGui::PopFont();
+	ImGui::End();
+}
+
 void IlIllllIIIlIlIlIlIlIlIlIlIlII::initialize(HMODULE handle)
 {
+	// we don't want paladium to check for imgui.ini file
+	//auto io = ImGui::GetIO();
+	//io.IniFilename = NULL;
+	//io.LogFilename = NULL;
+
+	ImGui::CreateContext();
+	ImGui_ImplWin32_Init(FindWindowA("LWJGL", NULL));
+	ImGui_ImplOpenGL2_Init();
+	imtheme::init_theme();
+
+	font = ImGui::GetIO().Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Arial.ttf", 20);
+
 	hook::initialize_hooks();
 
 	JavaVM* jvm = utils::get_jvm_instance();
@@ -339,8 +463,8 @@ void IlIllllIIIlIlIlIlIlIlIlIlIlII::initialize(HMODULE handle)
 	blocks::initialize();
 
 	int i = 2000;
-
-	while (!GetAsyncKeyState(VK_END))
+	MessageBox(NULL, "Injected Successfully! Press \"INSERT\" to open.", "Success", MB_OK | MB_ICONINFORMATION);
+	while (!GetAsyncKeyState(VK_END) && !stop) 
 	{
 		jobject world = env->GetObjectField(mc_instance, the_world_field);
 		bool is_world_null = world == nullptr;
@@ -372,5 +496,6 @@ void IlIllllIIIlIlIlIlIlIlIlIlIlII::initialize(HMODULE handle)
 
 	clear_chunks();
 	hook::uninitialize_hooks();
+	ImGui::DestroyContext();
 	FreeLibraryAndExitThread(handle, 0);
 }

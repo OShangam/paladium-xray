@@ -3,6 +3,7 @@
 #include <Windows.h>
 #include <gl/GL.h>
 #include <vector>
+#include <string>
 
 class vec3f
 {
@@ -22,9 +23,11 @@ class whitelisted_block
 public:
 	int block_id;
 	vec3f color;
+	std::string name;
 
-	whitelisted_block(int block_id, vec3f color) : color(color)
+	whitelisted_block(std::string name, int block_id, vec3f color) : color(color)
 	{
+		this->name = name;
 		this->block_id = block_id;
 		this->color = color;
 	}
@@ -38,4 +41,5 @@ namespace blocks
 	bool is_block_whitelisted(int block_id);
 	vec3f* get_block_color(int block_id);
 	std::vector<whitelisted_block>* get_whitelisted_blocks();
+	extern bool detect_minerals;
 }
