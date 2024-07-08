@@ -17,10 +17,9 @@ Une autre possibilité est de renommer le DLL en vlc.dll, mais cela peut être p
 [GNU GPL 3.0](https://choosealicense.com/licenses/gpl-3.0/)
 
 # Modifications
-[+] Changement du nom de la classe explicite: "xray.cpp" et "xray.hpp".
-[+] Ajout de block et la possibilité de changer entre Coffres et Minerais (à améliorer).
-[+] Limite de chunks lors du scan.
-[-] Gui supprimé, qui sera remplacé par une interface externe dans le futur.
+[+] Ajout de block et la possibilité de changer entre Coffres et Minerais (à améliorer).\n
+[+] Limite de chunks lors du scan.\n
+[+] Update à la dernière version du jeu.\n
 
 # DISCLAIMER
 * Je ne suis pas responsable de quelconque bannissement et à l'écoute de toutes remarques constructives.

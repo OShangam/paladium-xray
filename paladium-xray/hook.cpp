@@ -5,7 +5,7 @@
 #include "imgui/imgui_impl_win32.h"
 
 #include "hook.hpp"
-#include "IlIllllIIIlIlIlIlIlIlIlIlIlII.hpp"
+#include "xray.hpp"
 
 #pragma comment(lib, "minhook/minhook.lib")
 #include "minhook/MinHook.h"
@@ -38,7 +38,7 @@ bool should_reinitialize(RECT rect)
 
 void render_imgui(HDC hDc, RECT rect)
 {
-	if (!IlIllllIIIlIlIlIlIlIlIlIlIlII::gui_open)
+	if (!xray::gui_open)
 	{
 		return;
 	}
@@ -51,7 +51,7 @@ void render_imgui(HDC hDc, RECT rect)
 	ImGui_ImplOpenGL2_NewFrame();
 	ImGui::NewFrame();
 
-	IlIllllIIIlIlIlIlIlIlIlIlIlII::render_gui();
+	xray::render_gui();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
@@ -111,7 +111,7 @@ bool hook_wglSwapBuffers(HDC hDc)
 	glLoadMatrixf(projection);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadMatrixf(modelview);
-	IlIllllIIIlIlIlIlIlIlIlIlIlII::render();
+	xray::render();
 	glPopMatrix();
 
 	wglMakeCurrent(hDc, current_context);
@@ -119,14 +119,14 @@ bool hook_wglSwapBuffers(HDC hDc)
 }
 
 static LRESULT WINAPI hook_WndProcHandle(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-	if (IlIllllIIIlIlIlIlIlIlIlIlIlII::gui_open && ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
+	if (xray::gui_open && ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
 	{
 		return true;
 	}
 
 	if (msg == WM_KEYDOWN && wParam == VK_INSERT)
 	{
-		IlIllllIIIlIlIlIlIlIlIlIlIlII::gui_open = !IlIllllIIIlIlIlIlIlIlIlIlIlII::gui_open;
+		xray::gui_open = !xray::gui_open;
 	}
 
 	return CallWindowProc(wnd_proc, hWnd, msg, wParam, lParam);

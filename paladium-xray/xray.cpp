@@ -1,4 +1,4 @@
-#include "IlIllllIIIlIlIlIlIlIlIlIlIlII.hpp"
+#include "xray.hpp"
 #include "blocks.hpp"
 #include "hook.hpp"
 #include "utils.hpp"
@@ -51,14 +51,11 @@ int max_y_search = 50;
 
 int max_xz_search = 50.0;
 
-bool IlIllllIIIlIlIlIlIlIlIlIlIlII::gui_open;
+bool xray::gui_open;
 
-void IlIllllIIIlIlIlIlIlIlIlIlIlII::render()
+void xray::render()
 {
-	if (!enabled)
-	{
-		return;
-	}
+
 
 	for (chunk chunk : chunks)
 	{
@@ -323,7 +320,7 @@ void clear_chunks()
 	chunks.clear();
 }
 
-void IlIllllIIIlIlIlIlIlIlIlIlIlII::render_gui()
+void xray::render_gui()
 {
 	auto io = ImGui::GetIO();
 
@@ -421,7 +418,7 @@ void IlIllllIIIlIlIlIlIlIlIlIlIlII::render_gui()
 	ImGui::End();
 }
 
-void IlIllllIIIlIlIlIlIlIlIlIlIlII::initialize(HMODULE handle)
+void xray::initialize(HMODULE handle)
 {
 	// we don't want paladium to check for imgui.ini file
 	//auto io = ImGui::GetIO();

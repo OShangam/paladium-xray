@@ -5,7 +5,7 @@
 #include <gl/GL.h>
 #include <vector>
 
-namespace IlIllllIIIlIlIlIlIlIlIlIlIlII {
+namespace xray {
 
 	void render();
 	void render_gui();

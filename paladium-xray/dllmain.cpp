@@ -1,5 +1,5 @@
 #include <Windows.h>
-#include "IlIllllIIIlIlIlIlIlIlIlIlIlII.hpp"
+#include "xray.hpp"
 
 BOOL APIENTRY DllMain(HMODULE hModule,
     DWORD  ul_reason_for_call,
@@ -13,7 +13,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
     DisableThreadLibraryCalls(hModule);
 
     HANDLE thread_handle = CreateThread(0, 0, [](LPVOID hMod) -> DWORD {
-        IlIllllIIIlIlIlIlIlIlIlIlIlII::initialize(static_cast<HMODULE>(hMod));
+        xray::initialize(static_cast<HMODULE>(hMod));
         return 0;
         }, hModule, 0, 0);
 

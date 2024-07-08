@@ -156,7 +156,7 @@
     <ClCompile Include="hook.cpp" />
     <ClCompile Include="j_classloader.cpp" />
     <ClCompile Include="utils.cpp" />
-    <ClCompile Include="IlIllllIIIlIlIlIlIlIlIlIlIlII.cpp" />
+    <ClCompile Include="xray.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imconfig.h" />
@@ -174,7 +174,7 @@
     <ClInclude Include="hook.hpp" />
     <ClInclude Include="j_classloader.hpp" />
     <ClInclude Include="utils.hpp" />
-    <ClInclude Include="IlIllllIIIlIlIlIlIlIlIlIlIlII.hpp" />
+    <ClInclude Include="xray.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

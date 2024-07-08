@@ -18,7 +18,7 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="IlIllllIIIlIlIlIlIlIlIlIlIlII.cpp">
+    <ClCompile Include="xray.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="hook.cpp">
@@ -59,7 +59,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="IlIllllIIIlIlIlIlIlIlIlIlIlII.hpp">
+    <ClInclude Include="xray.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="hook.hpp">
