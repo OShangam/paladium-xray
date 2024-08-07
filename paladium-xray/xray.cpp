@@ -56,33 +56,35 @@ bool xray::gui_open;
 void xray::render()
 {
 
-
-	for (chunk chunk : chunks)
-	{
-		for (block block : *chunk.blocks)
+	if (enabled) {
+		for (chunk chunk : chunks)
 		{
-			glPushMatrix();
-			gl_utils::start();
+			for (block block : *chunk.blocks)
+			{
+				glPushMatrix();
+				gl_utils::start();
 
-			vec3f* color = blocks::get_block_color(block.block_id);
-			glColor4f(color->r, color->g, color->b, 0.05F);
+				vec3f* color = blocks::get_block_color(block.block_id);
+				glColor4f(color->r, color->g, color->b, 0.05F);
 
-			double x = block.position.x - render_pos_vec->x;
-			double y = block.position.y - render_pos_vec->y;
-			double z = block.position.z - render_pos_vec->z;
+				double x = block.position.x - render_pos_vec->x;
+				double y = block.position.y - render_pos_vec->y;
+				double z = block.position.z - render_pos_vec->z;
 
-			double start_offset = 0.5;
-			double offset = 0.5;
+				double start_offset = 0.5;
+				double offset = 0.5;
 
-			gl_utils::quads(x + start_offset - offset, y + start_offset - offset, z + start_offset - offset, x + start_offset + offset, y + start_offset + offset, z + start_offset + offset);
-			glColor4f(color->r, color->g, color->b, 1);
-			gl_utils::outlines(x + start_offset - offset, y + start_offset - offset, z + start_offset - offset, x + start_offset + offset, y + start_offset + offset, z + start_offset + offset, 1);
+				gl_utils::quads(x + start_offset - offset, y + start_offset - offset, z + start_offset - offset, x + start_offset + offset, y + start_offset + offset, z + start_offset + offset);
+				glColor4f(color->r, color->g, color->b, 1);
+				gl_utils::outlines(x + start_offset - offset, y + start_offset - offset, z + start_offset - offset, x + start_offset + offset, y + start_offset + offset, z + start_offset + offset, 1);
 
-			gl_utils::end();
-			glPopMatrix();
-			
+				gl_utils::end();
+				glPopMatrix();
+
+			}
 		}
 	}
+
 }
 
 void update_matrix()
@@ -408,8 +410,30 @@ void xray::render_gui()
 				blocks::initialize();
 				clear_chunks();
 			}
+
+			ImGui::EndTabItem();
 		}
 
+		if (ImGui::BeginTabItem("Updater (!)"))
+		{
+			ImGui::Text("Paladium Ore ID: 548");
+			ImGui::Text("Oak Drawer ID: 2991");
+
+
+			ImGui::InputInt("Ore Offset", &blocks::ore_offset);
+			ImGui::InputInt("Chest Offset", &blocks::chest_offset);
+
+			ImGui::Text
+			("COMMENT UTILISER: Si tu ne sais pas compiler et update les ids des blocks utilise cette option. \nPar exemple tu as comme ID pour le paladium dans le cheat qui est egale a 548, tu vas chercher dans le client l'ID actuelle du paladium et effectuer le calcul suivant: \noffset = pala_id - 548\nEt tu vas effectuer la meme chose pour les coffres en oubliant pas d'appuyer sur 'Reload'!!\n");
+		
+
+			if (ImGui::Button("Reload"))
+			{
+				vec->clear();
+				blocks::initialize();
+				clear_chunks();
+			}
+		}
 
 		ImGui::EndTabBar();
 	}
@@ -418,41 +442,42 @@ void xray::render_gui()
 	ImGui::End();
 }
 
+#include <dwmapi.h>
+
 void xray::initialize(HMODULE handle)
 {
-	// we don't want paladium to check for imgui.ini file
-	//auto io = ImGui::GetIO();
-	//io.IniFilename = NULL;
-	//io.LogFilename = NULL;
-
 	ImGui::CreateContext();
-	ImGui_ImplWin32_Init(FindWindowA("LWJGL", NULL));
-	ImGui_ImplOpenGL2_Init();
-	imtheme::init_theme();
 
+	HWND hwnd = FindWindowA("LWJGL", NULL);
+	if (hwnd == NULL) {
+		MessageBoxA(NULL, "Could not find the target window.", "Error", MB_ICONERROR);
+		exit(1);
+	}
+
+	SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+	ImGui_ImplWin32_Init(hwnd);
+	ImGui_ImplOpenGL2_Init();
+
+	imtheme::init_theme();
 	font = ImGui::GetIO().Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Arial.ttf", 20);
 
 	hook::initialize_hooks();
 
 	JavaVM* jvm = utils::get_jvm_instance();
-
-	if (!jvm) 
-	{
-		MessageBoxA(NULL, "Could not find jvm handle", NULL, MB_ICONERROR);
+	if (!jvm) {
+		MessageBoxA(NULL, "Could not find JVM handle", NULL, MB_ICONERROR);
 		exit(1);
 	}
 
 	jvmtiEnv* jvmti;
-
 	jvm->AttachCurrentThread((void**)&env, 0);
 	jvm->GetEnv((void**)&env, JNI_VERSION_1_8);
 	jvm->GetEnv((void**)&jvmti, JVMTI_VERSION_1_2);
 
 	JClassLoader* class_loader = utils::get_classloader_by_thread_name(env, jvmti, "Client thread");
-
-	if (!class_loader)
-	{
-		MessageBoxA(NULL, "Could not find minecraft's class loader", NULL, MB_ICONERROR);
+	if (!class_loader) {
+		MessageBoxA(NULL, "Could not find Minecraft's class loader", NULL, MB_ICONERROR);
 		exit(1);
 	}
 
@@ -461,14 +486,13 @@ void xray::initialize(HMODULE handle)
 
 	int i = 2000;
 	MessageBox(NULL, "Injected Successfully! Press \"INSERT\" to open.", "Success", MB_OK | MB_ICONINFORMATION);
-	while (!GetAsyncKeyState(VK_END) && !stop) 
-	{
+
+	while (!GetAsyncKeyState(VK_END) && !stop) {
 		jobject world = env->GetObjectField(mc_instance, the_world_field);
 		bool is_world_null = world == nullptr;
 		env->DeleteLocalRef(world);
 
-		if (is_world_null)
-		{
+		if (is_world_null) {
 			clear_chunks();
 			continue;
 		}
@@ -478,8 +502,7 @@ void xray::initialize(HMODULE handle)
 			i = 0;
 		}
 
-		if (i % 10 == 0)
-		{
+		if (i % 10 == 0) {
 			validate_chunks();
 		}
 
@@ -489,7 +512,6 @@ void xray::initialize(HMODULE handle)
 		i++;
 		Sleep(1);
 	}
-
 
 	clear_chunks();
 	hook::uninitialize_hooks();

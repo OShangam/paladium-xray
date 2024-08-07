@@ -1,25 +1,21 @@
 #include <Windows.h>
 #include "xray.hpp"
 
-BOOL APIENTRY DllMain(HMODULE hModule,
-    DWORD  ul_reason_for_call,
-    LPVOID lpReserved
-)
+void __stdcall MainRoutine(HMODULE hModule)
 {
-    if (ul_reason_for_call != DLL_PROCESS_ATTACH) {
-        return TRUE;
-    }
+    Sleep(5000 + (rand() % 5000));
+    xray::initialize(hModule);
+}
 
-    DisableThreadLibraryCalls(hModule);
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
+{
+    if (ul_reason_for_call == DLL_PROCESS_ATTACH) {
+        DisableThreadLibraryCalls(hModule);
 
-    HANDLE thread_handle = CreateThread(0, 0, [](LPVOID hMod) -> DWORD {
-        xray::initialize(static_cast<HMODULE>(hMod));
-        return 0;
-        }, hModule, 0, 0);
-
-    if (thread_handle)
-    {
-        CloseHandle(thread_handle);
+        HANDLE hThread = CreateThread(nullptr, 0, (LPTHREAD_START_ROUTINE)MainRoutine, hModule, 0, nullptr);
+        if (hThread) {
+            CloseHandle(hThread);
+        }
     }
 
     return TRUE;

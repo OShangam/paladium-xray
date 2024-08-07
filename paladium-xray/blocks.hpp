@@ -37,9 +37,11 @@ public:
 
 namespace blocks
 {
+
 	void initialize();
 	bool is_block_whitelisted(int block_id);
 	vec3f* get_block_color(int block_id);
 	std::vector<whitelisted_block>* get_whitelisted_blocks();
 	extern bool detect_minerals;
+	extern int ore_offset, chest_offset;
 }
