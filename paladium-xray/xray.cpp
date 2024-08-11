@@ -1,8 +1,12 @@
+#define _CRT_SECURE_NO_WARNINGS
+
 #include "xray.hpp"
 #include "blocks.hpp"
+#include "config.hpp"
 #include "hook.hpp"
 #include "utils.hpp"
 #include "gl_utils.hpp"
+#include <filesystem>
 
 #include <algorithm>
 #include <mutex>
@@ -10,6 +14,7 @@
 #include "imtheme.h"
 #include "imgui/imgui_impl_opengl2.h"
 #include "imgui/imgui_impl_win32.h"
+#include <iostream>
 
 
 JNIEnv* env;
@@ -47,11 +52,28 @@ bool enabled, stop;
 // gui
 ImFont* font;
 int min_y_search = 0;
-int max_y_search = 50;
+int max_y_search = 255;
 
 int max_xz_search = 50.0;
 
 bool xray::gui_open;
+
+void noclip() {
+	jdouble current_y = env->GetDoubleField(mc_instance, player_y_field);
+	jdouble current_x = env->GetDoubleField(mc_instance, player_x_field);
+	jdouble current_z = env->GetDoubleField(mc_instance, player_z_field);
+
+	for (int i = 0; i < 10; i++) {
+		jdouble new_y = current_y * 1.01;
+		jdouble new_x = current_x * 1.05;
+		jdouble new_z = current_z * 1.05;
+
+		env->SetDoubleField(mc_instance, player_y_field, new_y);
+		env->SetDoubleField(mc_instance, player_y_field, new_x);
+		env->SetDoubleField(mc_instance, player_y_field, new_z);
+
+	}
+}
 
 void xray::render()
 {
@@ -322,57 +344,101 @@ void clear_chunks()
 	chunks.clear();
 }
 
-void xray::render_gui()
-{
+void xray::render_gui() {
 	auto io = ImGui::GetIO();
 
-	ImGui::Begin("X-Ray", 0, ImGuiWindowFlags_NoCollapse);
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f)); // Couleur de fond
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.30f, 0.30f, 1.0f));   // Couleur des boutons
+	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.40f, 0.40f, 0.40f, 1.0f)); // Couleur des boutons survolés
+	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.20f, 0.20f, 0.20f, 1.0f));  // Couleur des boutons actifs
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 10));  // Padding de la fenêtre
+
+	ImGui::Begin("X-Ray", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::PushFont(font);
 
 	std::vector<whitelisted_block>* vec = blocks::get_whitelisted_blocks();
 
-	if (ImGui::BeginTabBar("Categories"))
-	{
-		if (ImGui::BeginTabItem("Settings"))
-		{
+	if (ImGui::BeginTabBar("Categories")) {
+		if (ImGui::BeginTabItem("Settings")) {
 			ImGui::Checkbox("Enabled", &enabled);
 			ImGui::SliderInt("Min Y Search", &min_y_search, 0, 255);
 			ImGui::SliderInt("Max Y Search", &max_y_search, 25, 255);
 			ImGui::SliderInt("Range", &max_xz_search, 1, 100);
 
-			if (ImGui::Button("Reload Chunks"))
-			{
+			ImGui::Spacing();
+
+			if (ImGui::Button("Reload Chunks")) {
 				clear_chunks();
 			}
 
 			ImGui::SameLine();
 
-			if (ImGui::Button("Self Destruct"))
-			{
+			if (ImGui::Button("Self Destruct")) {
 				stop = true;
 			}
 
 			ImGui::EndTabItem();
 		}
 
-		if (ImGui::BeginTabItem("Whitelisted Blocks"))
+		if (ImGui::BeginTabItem("Add Block")) {
+			static char name[128] = "";
+			static int id;
+			static ImVec4 color = ImVec4(0, 0, 0, 0);
+
+			ImGui::InputText("Block Name", name, IM_ARRAYSIZE(name));
+			ImGui::InputInt("Block ID", &id);
+
+			ImGui::Spacing();
+
+			ImGui::ColorEdit3("Color", (float*)&color);
+
+			ImGui::Spacing();
+
+			if (ImGui::Button("Add Block")) {
+				vec3f color_vec = vec3f(color.x, color.y, color.z);
+
+				vec->push_back(whitelisted_block(std::string(name), id, color_vec));
+
+				clear_chunks();
+			}
+
+
+
+			ImGui::EndTabItem();
+		}
+
+		if (ImGui::BeginTabItem("Whitelisted Blocks")) 
 		{
 			ImGui::Columns(2, NULL, true);
 
-			for (int i = 0; i < vec->size(); ++i)
-			{
-				whitelisted_block b = vec->data()[i];
-				std::string block_name = b.name;
+			for (int i = 0; i < vec->size(); ++i) {
+				whitelisted_block& b = vec->at(i);
 
-				ImGui::Text("%s", block_name.c_str());
+				char buffer[128];
+				std::strncpy(buffer, b.name.c_str(), sizeof(buffer));
+				if (ImGui::InputText(("##Name" + std::to_string(i)).c_str(), buffer, sizeof(buffer))) {
+					b.name = buffer;
+				}
+
+				ImGui::NextColumn();
+
+				ImGui::InputInt(("ID##" + std::to_string(i)).c_str(), &b.block_id);
+				
+				ImGui::NextColumn();
+
+				ImGui::ColorEdit3(("Color##" + std::to_string(i)).c_str(), (float*)&b.color);
+
 				ImGui::NextColumn();
 
 				std::string button_id = "Remove##" + std::to_string(i);
-				if (ImGui::Button(button_id.c_str()))
-				{
+				if (ImGui::Button(button_id.c_str())) {
 					vec->erase(vec->begin() + i);
 					break;
 				}
+
+				ImGui::Spacing();
+				ImGui::Spacing();
+				ImGui::Spacing();
 
 				ImGui::NextColumn();
 			}
@@ -381,38 +447,67 @@ void xray::render_gui()
 			ImGui::EndTabItem();
 		}
 
-		if (ImGui::BeginTabItem("Add Block"))
+		if (ImGui::BeginTabItem("Config")) {
+			static char file_name[128] = "config.json";
+
+			std::string path = config::getPath();
+			const char* cstr_path = path.c_str();
+
+			ImGui::Columns(2, NULL, false);
+
+			ImGui::Text("Config Name");
+			ImGui::InputText("##ConfigName", file_name, IM_ARRAYSIZE(file_name));
+
+
+			if (ImGui::Button("Export Config")) {
+				config::export_config(file_name);
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Config Folder")) {
+				ShellExecute(NULL, "open", cstr_path, NULL, NULL, SW_SHOWDEFAULT);
+			}
+
+			ImGui::NextColumn();
+
+			ImGui::Text("Existing configs:\n");
+			std::vector<std::string> jsonnames = config::getJsonFileNames();
+
+			namespace fs = std::filesystem;
+
+			for (const auto& name : jsonnames) {
+				ImGui::Text("%s", name.c_str());
+
+				if (ImGui::Button(("Import##" + name).c_str())) {
+					config::import_config(name);
+					clear_chunks();
+				}
+
+				ImGui::SameLine();
+
+				if (ImGui::Button(("Remove##" + name).c_str())) {
+					fs::remove(path + name);
+				}
+			}
+
+			ImGui::Columns(1);
+
+			ImGui::EndTabItem();
+		}
+
+
+		if (ImGui::BeginTabItem("Noclip"))
 		{
-			static std::string name;
-			static int id;
-			static ImVec4 color = ImVec4(0, 0, 0, 0);
 
-			ImGui::InputInt("Block ID", &id);
-			ImGui::ColorEdit3("Color", (float*)&color);
-
-			if (ImGui::Button("Add Block"))
+			if (ImGui::Button("Activate"))
 			{
-				vec3f color_vec = vec3f(color.x, color.y, color.z);
-
-				vec->push_back(whitelisted_block(name, id, color_vec));
-				clear_chunks();
-			}
-			
-			ImGui::EndTabItem();
-		}
-
-		if (ImGui::BeginTabItem("Config"))
-		{
-			ImGui::Text("Your Configs is: %s", blocks::detect_minerals ? "Minerals" : "Chests");
-
-			if (ImGui::Checkbox("Detect Minerals", &blocks::detect_minerals)) {
-				vec->clear();
-				blocks::initialize();
-				clear_chunks();
+				noclip();
 			}
 
 			ImGui::EndTabItem();
 		}
+
 
 		if (ImGui::BeginTabItem("Updater (!)"))
 		{
@@ -425,14 +520,18 @@ void xray::render_gui()
 
 			ImGui::Text
 			("COMMENT UTILISER: Si tu ne sais pas compiler et update les ids des blocks utilise cette option. \nPar exemple tu as comme ID pour le paladium dans le cheat qui est egale a 548, tu vas chercher dans le client l'ID actuelle du paladium et effectuer le calcul suivant: \noffset = pala_id - 548\nEt tu vas effectuer la meme chose pour les coffres en oubliant pas d'appuyer sur 'Reload'!!\n");
-		
+
 
 			if (ImGui::Button("Reload"))
 			{
 				vec->clear();
 				blocks::initialize();
+				config::download_file();
+
 				clear_chunks();
 			}
+
+			ImGui::EndTabItem();
 		}
 
 		ImGui::EndTabBar();
@@ -440,7 +539,12 @@ void xray::render_gui()
 
 	ImGui::PopFont();
 	ImGui::End();
+
+	ImGui::PopStyleVar();
+	ImGui::PopStyleColor(4);
 }
+
+
 
 #include <dwmapi.h>
 
@@ -482,10 +586,13 @@ void xray::initialize(HMODULE handle)
 	}
 
 	initialize_fields(class_loader);
+
+	config::download_file();
 	blocks::initialize();
 
-	int i = 2000;
 	MessageBox(NULL, "Injected Successfully! Press \"INSERT\" to open.", "Success", MB_OK | MB_ICONINFORMATION);
+
+	int i = 2000;
 
 	while (!GetAsyncKeyState(VK_END) && !stop) {
 		jobject world = env->GetObjectField(mc_instance, the_world_field);
