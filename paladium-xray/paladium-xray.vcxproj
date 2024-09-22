@@ -73,8 +73,8 @@
     <LibraryPath>D:\Development\source\repos\paladium-xray\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release x64|x64'">
-    <IncludePath>D:\.Dossiers Generaux\Desktop\SRC\Paladium GUI\Includes;C:\Program Files\Java\jdk1.8.0_202\include\win32;C:\Program Files\Java\jdk1.8.0_202\include;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\.Dossiers Generaux\Desktop\Github\Paladium GUI\Librairies;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)\Includes\;$(SolutionDir);$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)\Librairies\;$(SolutionDir);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg">
     <VcpkgEnabled>true</VcpkgEnabled>
@@ -169,7 +169,7 @@
     <ClCompile Include="hook.cpp" />
     <ClCompile Include="j_classloader.cpp" />
     <ClCompile Include="utils.cpp" />
-    <ClCompile Include="xray.cpp" />
+    <ClCompile Include="modules\xray.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config.hpp" />
@@ -188,7 +188,7 @@
     <ClInclude Include="hook.hpp" />
     <ClInclude Include="j_classloader.hpp" />
     <ClInclude Include="utils.hpp" />
-    <ClInclude Include="xray.hpp" />
+    <ClCompile Include="modules\xray.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

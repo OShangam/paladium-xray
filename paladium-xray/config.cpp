@@ -93,23 +93,23 @@ std::vector<std::string> config::getJsonFileNames() {
 	return fileNames;
 }
 
-size_t write_data(void* ptr, size_t size, size_t nmemb, FILE* stream) {
-	size_t written = fwrite(ptr, size, nmemb, stream);
-	return written;
+size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+	std::ofstream* ofs = static_cast<std::ofstream*>(userp);
+	ofs->write(static_cast<char*>(contents), size * nmemb);
+	return size * nmemb;
 }
 
 void config::download_file()
 {
 	CURL* curl;
-	FILE* fp;
 	CURLcode res;
 	curl = curl_easy_init();
 
 	std::string output_path = config::getPath();
 
 	std::vector<std::string> urls = {
-		"https://pastebin.com/raw/xDeBwMty",
-		"https://pastebin.com/raw/fTex5xBt"
+		"https://pastebin.com/raw/8HKut2zZ",
+		"https://pastebin.com/raw/MVMCaWmU"
 	};
 
 	std::vector<std::string> filenames = {
@@ -122,32 +122,23 @@ void config::download_file()
 		for (size_t i = 0; i < urls.size(); ++i) {
 			std::string url = urls[i];
 			std::string filename = filenames[i];
-
 			std::string full_output_path = output_path + filename;
 
-			fp = fopen(full_output_path.c_str(), "wb");
-			if (fp == nullptr) {
+			std::ofstream ofs(full_output_path, std::ios::binary);
+			if (!ofs.is_open()) {
 				continue;
 			}
 
 			curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
-			curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 
-			fclose(fp);
+			curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+			curl_easy_setopt(curl, CURLOPT_WRITEDATA, &ofs);
+
+			res = curl_easy_perform(curl);
+
+			ofs.close();
 		}
+
 		curl_easy_cleanup(curl);
 	}
-}
-
-std::string get_temp_directory() {
-	const char* temp = std::getenv("%temp%");
-
-	return temp;
-}
-
-size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
-	std::ofstream* ofs = static_cast<std::ofstream*>(userp);
-	ofs->write(static_cast<char*>(contents), size * nmemb);
-	return size * nmemb;
 }

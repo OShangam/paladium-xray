@@ -5,7 +5,7 @@
 #include "imgui/imgui_impl_win32.h"
 
 #include "hook.hpp"
-#include "xray.hpp"
+#include "./modules/xray.hpp"
 
 #pragma comment(lib, "minhook/minhook.lib")
 #include "minhook/MinHook.h"

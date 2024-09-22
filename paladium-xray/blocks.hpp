@@ -44,5 +44,6 @@ namespace blocks
 	vec3f* get_block_color(int block_id);
 	std::vector<whitelisted_block>* get_whitelisted_blocks();
 	extern bool detect_minerals;
+	extern bool dev;
 	extern int ore_offset, chest_offset;
 }

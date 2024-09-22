@@ -18,9 +18,6 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="xray.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="hook.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -60,11 +57,14 @@
     <ClCompile Include="config.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="modules\xray.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="modules\xray.hpp">
+      <Filter>Header Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="xray.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="hook.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
