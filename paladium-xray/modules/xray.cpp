@@ -61,7 +61,8 @@ bool xray::gui_open;
 void xray::render()
 {
 
-	if (enabled) {
+	if (enabled && !xray::gui_open) 
+	{
 		for (chunk chunk : chunks)
 		{
 			for (block block : *chunk.blocks)
@@ -171,56 +172,57 @@ chunk get_chunk_data(int chunk_x, int chunk_z)
 	return chunk;
 }
 
-void find_chunks()
-{
+void find_chunks() {
 	jobject player = env->GetObjectField(mc_instance, the_player_field);
-	int x = (int) (env->GetDoubleField(player, player_x_field) / 16);
-	int z = (int) (env->GetDoubleField(player, player_z_field) / 16);
+	double player_x = env->GetDoubleField(player, player_x_field);
+	double player_z = env->GetDoubleField(player, player_z_field);
 
-	if (x < 0) 
-	{
+	int x = (int)(player_x / 16);
+	int z = (int)(player_z / 16);
+
+	if (x < 0) {
 		x--;
 	}
-
-	if (z < 0) 
-	{
+	if (z < 0) {
 		z--;
 	}
 
-
-	// chunk rad
 	int chunk_radius = 3;
 
-	for (int chunk_x = -chunk_radius; chunk_x < chunk_radius; ++chunk_x)
-	{
-		for (int chunk_z = -chunk_radius; chunk_z < chunk_radius; ++chunk_z)
-		{
+	for (int chunk_x = -chunk_radius; chunk_x < chunk_radius; ++chunk_x) {
+		for (int chunk_z = -chunk_radius; chunk_z < chunk_radius; ++chunk_z) {
 			bool already_checked = false;
 
-			for (chunk c : chunks)
-			{
-				if (c.x - (chunk_x + x) == 0 && c.z - (chunk_z + z) == 0) {
+			for (const chunk& c : chunks) {
+				if (c.x == (chunk_x + x) && c.z == (chunk_z + z)) {
 					already_checked = true;
 					break;
 				}
 			}
 
-			if (already_checked)
-			{
+			if (already_checked) {
 				continue;
 			}
 
-			chunk chunk = get_chunk_data((chunk_x + x) * 16, (chunk_z + z) * 16);
-			chunk.x = chunk_x + x;
-			chunk.z = chunk_z + z;
+			double chunk_center_x = (chunk_x + x) * 16 + 8;
+			double chunk_center_z = (chunk_z + z) * 16 + 8;
 
-			if (chunk.blocks->empty()) 
-			{
+			double distance = sqrt(pow(player_x - chunk_center_x, 2) + pow(player_z - chunk_center_z, 2));
+
+			if (distance > max_xz_search) {
+				continue;
+			}
+
+			chunk new_chunk = get_chunk_data((chunk_x + x) * 16, (chunk_z + z) * 16);
+			new_chunk.x = chunk_x + x;
+			new_chunk.z = chunk_z + z;
+
+			if (new_chunk.blocks->empty()) {
 				continue;
 			}
 
 			mutex.lock();
-			chunks.push_back(chunk);
+			chunks.push_back(new_chunk);
 			mutex.unlock();
 		}
 	}
@@ -483,16 +485,9 @@ void xray::render_gui() {
 
 		if (ImGui::BeginTabItem("Updater (!)") && blocks::dev)
 		{
-			ImGui::Text("Paladium Ore ID: 548");
-			ImGui::Text("Oak Drawer ID: 2991");
-
 
 			ImGui::InputInt("Ore Offset", &blocks::ore_offset);
 			ImGui::InputInt("Chest Offset", &blocks::chest_offset);
-
-			ImGui::Text
-			("COMMENT UTILISER: Si tu ne sais pas compiler et update les ids des blocks utilise cette option. \nPar exemple tu as comme ID pour le paladium dans le cheat qui est egale a 548, tu vas chercher dans le client l'ID actuelle du paladium et effectuer le calcul suivant: \noffset = pala_id - 548\nEt tu vas effectuer la meme chose pour les coffres en oubliant pas d'appuyer sur 'Reload'!!\n");
-
 
 			if (ImGui::Button("Reload"))
 			{
