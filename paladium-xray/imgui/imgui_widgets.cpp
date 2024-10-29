@@ -1419,6 +1419,41 @@ bool ImGui::ImageButton(ImTextureID user_texture_id, const ImVec2& size, const I
 }
 #endif // #ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 
+bool ImGui::CustomToggle(const char* label, bool* v)
+{
+    ImGui::PushID(label);
+    ImGui::Text(label);
+
+    ImGui::SameLine();
+    ImVec2 p = ImGui::GetCursorScreenPos();
+    float height = ImGui::GetFrameHeight();
+    float width = height * 1.55f; // Adjust the width to look similar to the switch in the image
+
+    // Colors
+    ImU32 color_bg_on = ImGui::GetColorU32(ImVec4(0.0f, 1.0f, 0.0f, 1.0f));  // Green when ON
+    ImU32 color_bg_off = ImGui::GetColorU32(ImVec4(1.0f, 0.0f, 0.0f, 1.0f)); // Red when OFF
+    ImU32 color_knob = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 1.0f));   // White knob
+
+    ImGui::InvisibleButton(label, ImVec2(width, height));
+    bool clicked = ImGui::IsItemClicked();
+    if (clicked)
+        *v = !(*v); // Toggle state
+
+    // Background
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), *v ? color_bg_on : color_bg_off, height * 0.5f);
+
+    // Knob position
+    float knob_radius = height * 0.4f;
+    ImVec2 knob_pos = *v ? ImVec2(p.x + width - height * 0.5f, p.y + height * 0.5f) : ImVec2(p.x + height * 0.5f, p.y + height * 0.5f);
+
+    draw_list->AddCircleFilled(knob_pos, knob_radius, color_knob);
+
+    ImGui::PopID();
+
+    return clicked;
+}
+
 bool ImGui::Checkbox(const char* label, bool* v)
 {
     ImGuiWindow* window = GetCurrentWindow();

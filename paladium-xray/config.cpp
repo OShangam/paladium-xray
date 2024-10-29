@@ -2,6 +2,7 @@
 
 #include "blocks.hpp"
 #include "config.hpp"
+
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <iostream>
@@ -141,4 +142,21 @@ void config::download_file()
 
 		curl_easy_cleanup(curl);
 	}
+}
+
+std::string config::getVersion() {
+	CURL* curl;
+	CURLcode res;
+	std::string version;
+
+	curl = curl_easy_init();
+	if (curl) {
+		curl_easy_setopt(curl, CURLOPT_URL, "https://pastebin.com/raw/3QDg74qj");
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &version);
+		res = curl_easy_perform(curl);
+		curl_easy_cleanup(curl);
+	}
+
+	return version;
 }

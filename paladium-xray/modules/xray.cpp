@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
+ï»¿#define _CRT_SECURE_NO_WARNINGS
 
 #include "xray.hpp"
 #include "../blocks.hpp"
@@ -15,7 +15,6 @@
 #include "../imgui/imgui_impl_opengl2.h"
 #include "../imgui/imgui_impl_win32.h"
 #include <iostream>
-
 
 JNIEnv* env;
 
@@ -51,6 +50,8 @@ bool enabled, stop;
 
 // gui
 ImFont* font;
+ImVec4 theme_color = ImVec4(0.188f, 0.478f, 0.898f, 1.f);
+
 int min_y_search = 0;
 int max_y_search = 255;
 
@@ -130,7 +131,9 @@ int get_id_from_block(jobject world, vec3i vec)
 	}
 
 	jobject block = get_block(world, vec);
+
 	int block_id = env->CallStaticIntMethod(block_class, m_get_id_from_block, block);
+
 	env->DeleteLocalRef(block);
 
 	return block_id;
@@ -318,6 +321,7 @@ void initialize_fields(JClassLoader* cl)
 	env->DeleteLocalRef(world_class);
 }
 
+
 void clear_chunks()
 {
 	for (chunk c : chunks)
@@ -328,46 +332,68 @@ void clear_chunks()
 
 	chunks.clear();
 }
-
 void xray::render_gui() {
 	auto io = ImGui::GetIO();
+	ImGuiStyle& style = ImGui::GetStyle();
 
-	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.15f, 0.15f, 0.15f, 1.0f)); // Couleur de fond
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.30f, 0.30f, 0.30f, 1.0f));   // Couleur des boutons
-	ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.40f, 0.40f, 0.40f, 1.0f)); // Couleur des boutons survolés
-	ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.20f, 0.20f, 0.20f, 1.0f));  // Couleur des boutons actifs
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(10, 10));  // Padding de la fenêtre
+	static int selected_tab = 0;
 
-	ImGui::Begin("X-Ray", 0, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+	ImGui::Begin(("X-ray"), NULL,
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar);
+
 	ImGui::PushFont(font);
 
-	std::vector<whitelisted_block>* vec = blocks::get_whitelisted_blocks();
+	style.FramePadding = ImVec2(4.0f, 4.0f);
+	style.FrameRounding = 3.f;
 
-	if (ImGui::BeginTabBar("Categories")) {
-		if (ImGui::BeginTabItem("Settings")) {
-			ImGui::Checkbox("Enabled", &enabled);
+	ImGui::BeginChild("Tabs", ImVec2(150, -45), true);
+	ImVec2 custom_spacing(0.0f, 6.5f);
+
+	std::string tabs[] = { "Settings", "Add Block", "List Blocks", "Config", "Theme"};
+	for (int i = 0; i < 5; ++i) 
+	{
+		if (ImGui::Selectable(tabs[i].c_str(), selected_tab == i, 0, ImVec2(0, 30.0f))) {
+			selected_tab = i;
+		}
+		ImGui::Dummy(custom_spacing);
+	}
+
+	if (blocks::dev && ImGui::Selectable("Updater (!)", selected_tab == 4, 0, ImVec2(0, 30.0f))) 
+	{
+		selected_tab = 5;
+	}
+
+	ImGui::EndChild();
+
+	ImGui::SameLine();
+
+	ImGui::BeginChild("Content", ImVec2(0, -45), false);
+	switch (selected_tab) 
+	{
+		case 0:
+			ImGui::Indent(20);
+			ImGui::Spacing();
+
+			ImGui::CustomToggle("Enabled: ", &enabled);
+
 			ImGui::SliderInt("Min Y Search", &min_y_search, 0, 255);
 			ImGui::SliderInt("Max Y Search", &max_y_search, 25, 255);
 			ImGui::SliderInt("Range", &max_xz_search, 1, 100);
 
 			ImGui::Spacing();
 
-			if (ImGui::Button("Reload Chunks")) {
-				clear_chunks();
-			}
+			if (ImGui::Button("Reload Chunks")) { clear_chunks(); }
+			break;
 
-			ImGui::SameLine();
+		case 1: 
+		{
+			ImGui::Indent(20);
+			ImGui::Spacing();
 
-			if (ImGui::Button("Self Destruct")) {
-				stop = true;
-			}
-
-			ImGui::EndTabItem();
-		}
-
-		if (ImGui::BeginTabItem("Add Block")) {
 			static char name[128] = "";
 			static int id;
+
 			static ImVec4 color = ImVec4(0, 0, 0, 0);
 
 			ImGui::InputText("Block Name", name, IM_ARRAYSIZE(name));
@@ -375,32 +401,33 @@ void xray::render_gui() {
 
 			ImGui::Spacing();
 
-			ImGui::ColorEdit3("Color", (float*)&color);
 
+			ImGui::ColorEdit3("Color", (float*)&color);
 			ImGui::Spacing();
 
 			if (ImGui::Button("Add Block")) {
 				vec3f color_vec = vec3f(color.x, color.y, color.z);
-
-				vec->push_back(whitelisted_block(std::string(name), id, color_vec));
+				blocks::get_whitelisted_blocks()->push_back(whitelisted_block(std::string(name), id, color_vec));
 
 				clear_chunks();
 			}
-
-
-
-			ImGui::EndTabItem();
+			break;
 		}
 
-		if (ImGui::BeginTabItem("Whitelisted Blocks")) 
+		case 2:
 		{
+			ImGui::Indent(20);
+			ImGui::Spacing();
+
+			std::vector<whitelisted_block>* vec = blocks::get_whitelisted_blocks();
+
 			ImGui::Columns(2, NULL, true);
 
 			for (int i = 0; i < vec->size(); ++i) {
 				whitelisted_block& b = vec->at(i);
-
 				char buffer[128];
 				std::strncpy(buffer, b.name.c_str(), sizeof(buffer));
+
 				if (ImGui::InputText(("##Name" + std::to_string(i)).c_str(), buffer, sizeof(buffer))) {
 					b.name = buffer;
 				}
@@ -408,7 +435,7 @@ void xray::render_gui() {
 				ImGui::NextColumn();
 
 				ImGui::InputInt(("ID##" + std::to_string(i)).c_str(), &b.block_id);
-				
+
 				ImGui::NextColumn();
 
 				ImGui::ColorEdit3(("Color##" + std::to_string(i)).c_str(), (float*)&b.color);
@@ -421,102 +448,188 @@ void xray::render_gui() {
 					break;
 				}
 
-				ImGui::Spacing();
-				ImGui::Spacing();
-				ImGui::Spacing();
+				ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
 
 				ImGui::NextColumn();
 			}
-
 			ImGui::Columns(1);
-			ImGui::EndTabItem();
+			break;
 		}
 
-		if (ImGui::BeginTabItem("Config")) {
-			static char file_name[128] = "config.json";
+		case 3:
+		{
+			ImGui::Indent(20);
+			ImGui::Spacing();
 
+			static char file_name[128] = "config.json";
 			std::string path = config::getPath();
 			const char* cstr_path = path.c_str();
 
 			ImGui::Columns(2, NULL, false);
 
 			ImGui::Text("Config Name");
+
 			ImGui::InputText("##ConfigName", file_name, IM_ARRAYSIZE(file_name));
 
-
-			if (ImGui::Button("Export Config")) {
-				config::export_config(file_name);
-			}
-
+			if (ImGui::Button("Export Config")) { config::export_config(file_name); }
 			ImGui::SameLine();
 
-			if (ImGui::Button("Config Folder")) {
-				ShellExecute(NULL, "open", cstr_path, NULL, NULL, SW_SHOWDEFAULT);
-			}
-
+			if (ImGui::Button("Config Folder")) { ShellExecute(NULL, "open", cstr_path, NULL, NULL, SW_SHOWDEFAULT); }
 			ImGui::NextColumn();
 
 			ImGui::Text("Existing configs:\n");
 			std::vector<std::string> jsonnames = config::getJsonFileNames();
 
 			namespace fs = std::filesystem;
-
 			for (const auto& name : jsonnames) {
 				ImGui::Text("%s", name.c_str());
-
 				if (ImGui::Button(("Import##" + name).c_str())) {
 					config::import_config(name);
+
 					clear_chunks();
 				}
 
 				ImGui::SameLine();
 
-				if (ImGui::Button(("Remove##" + name).c_str())) {
-					fs::remove(path + name);
-				}
+				if (ImGui::Button(("Remove##" + name).c_str())) { fs::remove(path + name); }
+
+				ImGui::Dummy(custom_spacing);
 			}
 
 			ImGui::Columns(1);
-
-			ImGui::EndTabItem();
+			break;
 		}
 
-
-
-		if (ImGui::BeginTabItem("Updater (!)") && blocks::dev)
+		case 4:
 		{
+			ImGui::Indent(20);
+			ImGui::Spacing();
+
+			ImGui::ColorEdit3("Color", (float*)&theme_color);
+
+			style.Colors[ImGuiCol_Button] = theme_color;
+			style.Colors[ImGuiCol_ButtonActive] = theme_color;
+			style.Colors[ImGuiCol_ButtonHovered] = theme_color;
+
+			style.Colors[ImGuiCol_SliderGrab] = theme_color;
+			style.Colors[ImGuiCol_SliderGrabActive] = theme_color;
+
+			break;
+		}
+
+		case 5:
+		{
+			ImGui::Indent(20);
+			ImGui::Spacing();
 
 			ImGui::InputInt("Ore Offset", &blocks::ore_offset);
 			ImGui::InputInt("Chest Offset", &blocks::chest_offset);
 
-			if (ImGui::Button("Reload"))
-			{
-				vec->clear();
+			if (ImGui::Button("Reload")) {
+				blocks::get_whitelisted_blocks()->clear();
 				blocks::initialize();
+
 				config::download_file();
 
 				clear_chunks();
 			}
-
-			ImGui::EndTabItem();
+			break;
 		}
+	}
 
-		ImGui::EndTabBar();
+	ImGui::EndChild();
+
+	style.FramePadding = ImVec2(1.0f, 1.0f);
+	style.FrameRounding = 0.f;
+
+	ImGui::SetCursorPosY(ImGui::GetWindowHeight() - 40);
+	if (ImGui::Button("X", ImVec2(ImGui::GetWindowWidth() - 25, 30))) {
+		stop = true;
+		return;
 	}
 
 	ImGui::PopFont();
 	ImGui::End();
-
-	ImGui::PopStyleVar();
-	ImGui::PopStyleColor(4);
 }
-
-
 
 #include <dwmapi.h>
 
+std::string generateRandomNumbers(int count) {
+	std::string result;
+
+	for (int i = 0; i < count; ++i) {
+		int randomNum = std::rand() % 10;
+		result += std::to_string(randomNum);
+	}
+
+	return result;
+}
+
+void init_console() {
+	AllocConsole();
+	FILE* fp;
+	freopen_s(&fp, "CONOUT$", "w", stdout);
+
+	SetConsoleTitleA(generateRandomNumbers(5).c_str());
+
+	HWND hwnd = GetConsoleWindow();
+	if (hwnd) {
+		HMENU hmenu = GetSystemMenu(hwnd, FALSE);
+		EnableMenuItem(hmenu, SC_CLOSE, MF_GRAYED);
+		DWORD style = GetWindowLong(hwnd, GWL_STYLE);
+		style &= ~WS_MAXIMIZEBOX & ~WS_SIZEBOX & ~WS_SYSMENU;
+		SetWindowLong(hwnd, GWL_STYLE, style);
+		SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_FRAMECHANGED);
+	}
+
+	HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	CONSOLE_CURSOR_INFO cci;
+	GetConsoleCursorInfo(out, &cci);
+	cci.bVisible = false;
+	SetConsoleCursorInfo(out, &cci);
+
+	DWORD dw_mode = 0;
+	GetConsoleMode(out, &dw_mode);
+	SetConsoleMode(out, dw_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+
+	DWORD prev_mode = 0;
+	GetConsoleMode(out, &prev_mode);
+	SetConsoleMode(out, prev_mode & ~ENABLE_QUICK_EDIT_MODE);
+
+
+	CONSOLE_SCREEN_BUFFER_INFO info;
+	GetConsoleScreenBufferInfo(out, &info);
+	COORD new_size = {
+		info.srWindow.Right - info.srWindow.Left + 1,
+		info.srWindow.Bottom - info.srWindow.Top + 1
+	};
+	SetConsoleScreenBufferSize(out, new_size);
+}
+
 void xray::initialize(HMODULE handle)
 {
+	init_console();
+
+	HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	SetConsoleTextAttribute(out, 12);
+
+	std::cout << (R"(
+____  ___        ____________________    _____ _____.___.
+\   \/  /        \______   \______   \  /  _  \\__  |   |
+ \     /   ______ |       _/|       _/ /  /_\  \/   |   |
+ /     \  /_____/ |    |   \|    |   \/    |    \____   |
+/___/\  \         |____|_  /|____|_  /\____|__  / ______|
+      \_/                \/        \/         \/\/                                                                                                 
+    )") << std::endl;
+
+	SetConsoleTextAttribute(out, 7);
+
+	std::cout << "-> Process injected!" << std::endl;
+
+	std::cout << "-> Initializing X-Ray!" << std::endl;
+
 	ImGui::CreateContext();
 
 	HWND hwnd = FindWindowA("LWJGL", NULL);
@@ -531,6 +644,7 @@ void xray::initialize(HMODULE handle)
 	ImGui_ImplOpenGL2_Init();
 
 	imtheme::init_theme();
+
 	font = ImGui::GetIO().Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Arial.ttf", 20);
 
 	hook::initialize_hooks();
@@ -557,11 +671,13 @@ void xray::initialize(HMODULE handle)
 	config::download_file();
 	blocks::initialize();
 
-	MessageBox(NULL, "Injected Successfully! Press \"INSERT\" to open.", "Success", MB_OK | MB_ICONINFORMATION);
+	std::cout << "-> X-Ray is now fully loaded! (HF)" << std::endl;
 
+	xray::gui_open = true;
+	
 	int i = 2000;
 
-	while (!GetAsyncKeyState(VK_END) && !stop) {
+	while ( (!GetAsyncKeyState(VK_END) && !stop)) {
 		jobject world = env->GetObjectField(mc_instance, the_world_field);
 		bool is_world_null = world == nullptr;
 		env->DeleteLocalRef(world);
@@ -585,10 +701,15 @@ void xray::initialize(HMODULE handle)
 
 		i++;
 		Sleep(1);
+
+		SetConsoleTitleA(generateRandomNumbers(5).c_str());
 	}
+
+	FreeConsole();
 
 	clear_chunks();
 	hook::uninitialize_hooks();
 	ImGui::DestroyContext();
+
 	FreeLibraryAndExitThread(handle, 0);
 }
