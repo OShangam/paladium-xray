@@ -56,13 +56,15 @@ int min_y_search = 0;
 int max_y_search = 255;
 
 int max_xz_search = 50.0;
+int chunk_radius = 6;
 
 bool xray::gui_open;
+
 
 void xray::render()
 {
 
-	if (enabled && !xray::gui_open) 
+	if (enabled && !xray::gui_open)
 	{
 		for (chunk chunk : chunks)
 		{
@@ -146,7 +148,7 @@ chunk get_chunk_data(int chunk_x, int chunk_z)
 
 	jobject world = env->GetObjectField(mc_instance, the_world_field);
 
-	for (int y = min_y_search; y < max_y_search; ++y) 
+	for (int y = min_y_search; y < max_y_search; ++y)
 	{
 		update_render_pos();
 		update_matrix();
@@ -189,8 +191,6 @@ void find_chunks() {
 	if (z < 0) {
 		z--;
 	}
-
-	int chunk_radius = 3;
 
 	for (int chunk_x = -chunk_radius; chunk_x < chunk_radius; ++chunk_x) {
 		for (int chunk_z = -chunk_radius; chunk_z < chunk_radius; ++chunk_z) {
@@ -241,9 +241,11 @@ void validate_chunks()
 {
 	jobject world = env->GetObjectField(mc_instance, the_world_field);
 	jobject player = env->GetObjectField(mc_instance, the_player_field);
+
 	double player_x = env->GetDoubleField(player, player_x_field);
 	double player_y = env->GetDoubleField(player, player_y_field);
 	double player_z = env->GetDoubleField(player, player_z_field);
+
 	vec3d player_pos(player_x, player_y, player_z);
 
 	std::vector<chunk>::iterator it = chunks.begin();
@@ -350,8 +352,8 @@ void xray::render_gui() {
 	ImGui::BeginChild("Tabs", ImVec2(150, -45), true);
 	ImVec2 custom_spacing(0.0f, 6.5f);
 
-	std::string tabs[] = { "Settings", "Add Block", "List Blocks", "Config", "Theme"};
-	for (int i = 0; i < 5; ++i) 
+	std::string tabs[] = { "Settings", "Add Block", "List Blocks", "Config", "Theme" };
+	for (int i = 0; i < 5; ++i)
 	{
 		if (ImGui::Selectable(tabs[i].c_str(), selected_tab == i, 0, ImVec2(0, 30.0f))) {
 			selected_tab = i;
@@ -359,7 +361,7 @@ void xray::render_gui() {
 		ImGui::Dummy(custom_spacing);
 	}
 
-	if (blocks::dev && ImGui::Selectable("Updater (!)", selected_tab == 4, 0, ImVec2(0, 30.0f))) 
+	if (blocks::dev && ImGui::Selectable("Updater (!)", selected_tab == 4, 0, ImVec2(0, 30.0f)))
 	{
 		selected_tab = 5;
 	}
@@ -369,172 +371,173 @@ void xray::render_gui() {
 	ImGui::SameLine();
 
 	ImGui::BeginChild("Content", ImVec2(0, -45), false);
-	switch (selected_tab) 
+	switch (selected_tab)
 	{
-		case 0:
-			ImGui::Indent(20);
-			ImGui::Spacing();
+	case 0:
+		ImGui::Indent(20);
+		ImGui::Spacing();
 
-			ImGui::CustomToggle("Enabled: ", &enabled);
+		ImGui::CustomToggle("Enabled: ", &enabled);
 
-			ImGui::SliderInt("Min Y Search", &min_y_search, 0, 255);
-			ImGui::SliderInt("Max Y Search", &max_y_search, 25, 255);
-			ImGui::SliderInt("Range", &max_xz_search, 1, 100);
+		ImGui::SliderInt("Min Y Search", &min_y_search, 0, 255);
+		ImGui::SliderInt("Max Y Search", &max_y_search, 25, 255);
+		ImGui::SliderInt("Range", &max_xz_search, 1, 400);
+		ImGui::SliderInt("Chunks Radius", &chunk_radius, 4, 32);
 
-			ImGui::Spacing();
+		ImGui::Spacing();
 
-			if (ImGui::Button("Reload Chunks")) { clear_chunks(); }
-			break;
+		if (ImGui::Button("Reload Chunks")) { clear_chunks(); }
+		break;
 
-		case 1: 
-		{
-			ImGui::Indent(20);
-			ImGui::Spacing();
+	case 1:
+	{
+		ImGui::Indent(20);
+		ImGui::Spacing();
 
-			static char name[128] = "";
-			static int id;
+		static char name[128] = "";
+		static int id;
 
-			static ImVec4 color = ImVec4(0, 0, 0, 0);
+		static ImVec4 color = ImVec4(0, 0, 0, 0);
 
-			ImGui::InputText("Block Name", name, IM_ARRAYSIZE(name));
-			ImGui::InputInt("Block ID", &id);
+		ImGui::InputText("Block Name", name, IM_ARRAYSIZE(name));
+		ImGui::InputInt("Block ID", &id);
 
-			ImGui::Spacing();
+		ImGui::Spacing();
 
 
-			ImGui::ColorEdit3("Color", (float*)&color);
-			ImGui::Spacing();
+		ImGui::ColorEdit3("Color", (float*)&color);
+		ImGui::Spacing();
 
-			if (ImGui::Button("Add Block")) {
-				vec3f color_vec = vec3f(color.x, color.y, color.z);
-				blocks::get_whitelisted_blocks()->push_back(whitelisted_block(std::string(name), id, color_vec));
+		if (ImGui::Button("Add Block")) {
+			vec3f color_vec = vec3f(color.x, color.y, color.z);
+			blocks::get_whitelisted_blocks()->push_back(whitelisted_block(std::string(name), id, color_vec));
 
-				clear_chunks();
-			}
-			break;
+			clear_chunks();
 		}
+		break;
+	}
 
-		case 2:
-		{
-			ImGui::Indent(20);
-			ImGui::Spacing();
+	case 2:
+	{
+		ImGui::Indent(20);
+		ImGui::Spacing();
 
-			std::vector<whitelisted_block>* vec = blocks::get_whitelisted_blocks();
+		std::vector<whitelisted_block>* vec = blocks::get_whitelisted_blocks();
 
-			ImGui::Columns(2, NULL, true);
+		ImGui::Columns(2, NULL, true);
 
-			for (int i = 0; i < vec->size(); ++i) {
-				whitelisted_block& b = vec->at(i);
-				char buffer[128];
-				std::strncpy(buffer, b.name.c_str(), sizeof(buffer));
+		for (int i = 0; i < vec->size(); ++i) {
+			whitelisted_block& b = vec->at(i);
+			char buffer[128];
+			std::strncpy(buffer, b.name.c_str(), sizeof(buffer));
 
-				if (ImGui::InputText(("##Name" + std::to_string(i)).c_str(), buffer, sizeof(buffer))) {
-					b.name = buffer;
-				}
-
-				ImGui::NextColumn();
-
-				ImGui::InputInt(("ID##" + std::to_string(i)).c_str(), &b.block_id);
-
-				ImGui::NextColumn();
-
-				ImGui::ColorEdit3(("Color##" + std::to_string(i)).c_str(), (float*)&b.color);
-
-				ImGui::NextColumn();
-
-				std::string button_id = "Remove##" + std::to_string(i);
-				if (ImGui::Button(button_id.c_str())) {
-					vec->erase(vec->begin() + i);
-					break;
-				}
-
-				ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
-
-				ImGui::NextColumn();
+			if (ImGui::InputText(("##Name" + std::to_string(i)).c_str(), buffer, sizeof(buffer))) {
+				b.name = buffer;
 			}
-			ImGui::Columns(1);
-			break;
-		}
 
-		case 3:
-		{
-			ImGui::Indent(20);
-			ImGui::Spacing();
-
-			static char file_name[128] = "config.json";
-			std::string path = config::getPath();
-			const char* cstr_path = path.c_str();
-
-			ImGui::Columns(2, NULL, false);
-
-			ImGui::Text("Config Name");
-
-			ImGui::InputText("##ConfigName", file_name, IM_ARRAYSIZE(file_name));
-
-			if (ImGui::Button("Export Config")) { config::export_config(file_name); }
-			ImGui::SameLine();
-
-			if (ImGui::Button("Config Folder")) { ShellExecute(NULL, "open", cstr_path, NULL, NULL, SW_SHOWDEFAULT); }
 			ImGui::NextColumn();
 
-			ImGui::Text("Existing configs:\n");
-			std::vector<std::string> jsonnames = config::getJsonFileNames();
+			ImGui::InputInt(("ID##" + std::to_string(i)).c_str(), &b.block_id);
 
-			namespace fs = std::filesystem;
-			for (const auto& name : jsonnames) {
-				ImGui::Text("%s", name.c_str());
-				if (ImGui::Button(("Import##" + name).c_str())) {
-					config::import_config(name);
+			ImGui::NextColumn();
 
-					clear_chunks();
-				}
+			ImGui::ColorEdit3(("Color##" + std::to_string(i)).c_str(), (float*)&b.color);
 
-				ImGui::SameLine();
+			ImGui::NextColumn();
 
-				if (ImGui::Button(("Remove##" + name).c_str())) { fs::remove(path + name); }
-
-				ImGui::Dummy(custom_spacing);
+			std::string button_id = "Remove##" + std::to_string(i);
+			if (ImGui::Button(button_id.c_str())) {
+				vec->erase(vec->begin() + i);
+				break;
 			}
 
-			ImGui::Columns(1);
-			break;
+			ImGui::Spacing(); ImGui::Spacing(); ImGui::Spacing();
+
+			ImGui::NextColumn();
 		}
+		ImGui::Columns(1);
+		break;
+	}
 
-		case 4:
-		{
-			ImGui::Indent(20);
-			ImGui::Spacing();
+	case 3:
+	{
+		ImGui::Indent(20);
+		ImGui::Spacing();
 
-			ImGui::ColorEdit3("Color", (float*)&theme_color);
+		static char file_name[128] = "config.json";
+		std::string path = config::getPath();
+		const char* cstr_path = path.c_str();
 
-			style.Colors[ImGuiCol_Button] = theme_color;
-			style.Colors[ImGuiCol_ButtonActive] = theme_color;
-			style.Colors[ImGuiCol_ButtonHovered] = theme_color;
+		ImGui::Columns(2, NULL, false);
 
-			style.Colors[ImGuiCol_SliderGrab] = theme_color;
-			style.Colors[ImGuiCol_SliderGrabActive] = theme_color;
+		ImGui::Text("Config Name");
 
-			break;
-		}
+		ImGui::InputText("##ConfigName", file_name, IM_ARRAYSIZE(file_name));
 
-		case 5:
-		{
-			ImGui::Indent(20);
-			ImGui::Spacing();
+		if (ImGui::Button("Export Config")) { config::export_config(file_name); }
+		ImGui::SameLine();
 
-			ImGui::InputInt("Ore Offset", &blocks::ore_offset);
-			ImGui::InputInt("Chest Offset", &blocks::chest_offset);
+		if (ImGui::Button("Config Folder")) { ShellExecute(NULL, "open", cstr_path, NULL, NULL, SW_SHOWDEFAULT); }
+		ImGui::NextColumn();
 
-			if (ImGui::Button("Reload")) {
-				blocks::get_whitelisted_blocks()->clear();
-				blocks::initialize();
+		ImGui::Text("Existing configs:\n");
+		std::vector<std::string> jsonnames = config::getJsonFileNames();
 
-				config::download_file();
+		namespace fs = std::filesystem;
+		for (const auto& name : jsonnames) {
+			ImGui::Text("%s", name.c_str());
+			if (ImGui::Button(("Import##" + name).c_str())) {
+				config::import_config(name);
 
 				clear_chunks();
 			}
-			break;
+
+			ImGui::SameLine();
+
+			if (ImGui::Button(("Remove##" + name).c_str())) { fs::remove(path + name); }
+
+			ImGui::Dummy(custom_spacing);
 		}
+
+		ImGui::Columns(1);
+		break;
+	}
+
+	case 4:
+	{
+		ImGui::Indent(20);
+		ImGui::Spacing();
+
+		ImGui::ColorEdit3("Color", (float*)&theme_color);
+
+		style.Colors[ImGuiCol_Button] = theme_color;
+		style.Colors[ImGuiCol_ButtonActive] = theme_color;
+		style.Colors[ImGuiCol_ButtonHovered] = theme_color;
+
+		style.Colors[ImGuiCol_SliderGrab] = theme_color;
+		style.Colors[ImGuiCol_SliderGrabActive] = theme_color;
+
+		break;
+	}
+
+	case 5:
+	{
+		ImGui::Indent(20);
+		ImGui::Spacing();
+
+		ImGui::InputInt("Ore Offset", &blocks::ore_offset);
+		ImGui::InputInt("Chest Offset", &blocks::chest_offset);
+
+		if (ImGui::Button("Reload")) {
+			blocks::get_whitelisted_blocks()->clear();
+			blocks::initialize();
+
+			config::download_file();
+
+			clear_chunks();
+		}
+		break;
+	}
 	}
 
 	ImGui::EndChild();
@@ -556,6 +559,8 @@ void xray::render_gui() {
 
 std::string generateRandomNumbers(int count) {
 	std::string result;
+
+	srand(time(0));
 
 	for (int i = 0; i < count; ++i) {
 		int randomNum = std::rand() % 10;
@@ -673,36 +678,40 @@ ____  ___        ____________________    _____ _____.___.
 
 	std::cout << "-> X-Ray is now fully loaded! (HF)" << std::endl;
 
+	freopen("NUL", "w", stdout);
+	freopen("NUL", "w", stderr);
+
 	xray::gui_open = true;
-	
+
 	int i = 2000;
 
-	while ( (!GetAsyncKeyState(VK_END) && !stop)) {
+	while ((!GetAsyncKeyState(VK_END) && !stop)) {
 		jobject world = env->GetObjectField(mc_instance, the_world_field);
 		bool is_world_null = world == nullptr;
 		env->DeleteLocalRef(world);
 
 		if (is_world_null) {
 			clear_chunks();
-			continue;
+
+			Sleep(100);
 		}
+		else {
 
-		if (i > 2000) {
-			find_chunks();
-			i = 0;
+			if (i > 2000) {
+				find_chunks();
+				i = 0;
+			}
+
+			if (i % 10 == 0) {
+				validate_chunks();
+			}
+
+			update_matrix();
+			update_render_pos();
+
+			i++;
+			Sleep(1);
 		}
-
-		if (i % 10 == 0) {
-			validate_chunks();
-		}
-
-		update_matrix();
-		update_render_pos();
-
-		i++;
-		Sleep(1);
-
-		SetConsoleTitleA(generateRandomNumbers(5).c_str());
 	}
 
 	FreeConsole();
