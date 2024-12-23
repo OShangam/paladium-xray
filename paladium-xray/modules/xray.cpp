@@ -55,8 +55,8 @@ ImVec4 theme_color = ImVec4(0.188f, 0.478f, 0.898f, 1.f);
 int min_y_search = 0;
 int max_y_search = 255;
 
-int max_xz_search = 50.0;
-int chunk_radius = 6;
+int max_xz_search = 150.0;
+int chunk_radius = 16;
 
 bool xray::gui_open;
 
@@ -177,6 +177,7 @@ chunk get_chunk_data(int chunk_x, int chunk_z)
 	return chunk;
 }
 
+
 void find_chunks() {
 	jobject player = env->GetObjectField(mc_instance, the_player_field);
 	double player_x = env->GetDoubleField(player, player_x_field);
@@ -194,6 +195,15 @@ void find_chunks() {
 
 	for (int chunk_x = -chunk_radius; chunk_x < chunk_radius; ++chunk_x) {
 		for (int chunk_z = -chunk_radius; chunk_z < chunk_radius; ++chunk_z) {
+			double chunk_center_x = (chunk_x + x) * 16 + 8;
+			double chunk_center_z = (chunk_z + z) * 16 + 8;
+
+			double distance = sqrt(pow(player_x - chunk_center_x, 2) + pow(player_z - chunk_center_z, 2));
+
+			if (distance > max_xz_search) {
+				continue;
+			}
+
 			bool already_checked = false;
 
 			for (const chunk& c : chunks) {
@@ -204,15 +214,6 @@ void find_chunks() {
 			}
 
 			if (already_checked) {
-				continue;
-			}
-
-			double chunk_center_x = (chunk_x + x) * 16 + 8;
-			double chunk_center_z = (chunk_z + z) * 16 + 8;
-
-			double distance = sqrt(pow(player_x - chunk_center_x, 2) + pow(player_z - chunk_center_z, 2));
-
-			if (distance > max_xz_search) {
 				continue;
 			}
 
@@ -232,6 +233,7 @@ void find_chunks() {
 
 	env->DeleteLocalRef(player);
 }
+
 
 double distance_between_points(vec3d point1, vec3d point2) {
 	return sqrt(pow(point2.x - point1.x, 2) + pow(point2.y - point1.y, 2) + pow(point2.z - point1.z, 2));
@@ -377,12 +379,9 @@ void xray::render_gui() {
 		ImGui::Indent(20);
 		ImGui::Spacing();
 
-		ImGui::CustomToggle("Enabled: ", &enabled);
+		ImGui::Checkbox("Enabled: ", &enabled);
 
-		ImGui::SliderInt("Min Y Search", &min_y_search, 0, 255);
-		ImGui::SliderInt("Max Y Search", &max_y_search, 25, 255);
 		ImGui::SliderInt("Range", &max_xz_search, 1, 400);
-		ImGui::SliderInt("Chunks Radius", &chunk_radius, 4, 32);
 
 		ImGui::Spacing();
 
@@ -643,7 +642,7 @@ ____  ___        ____________________    _____ _____.___.
 		exit(1);
 	}
 
-	SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+	//SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
 	ImGui_ImplWin32_Init(hwnd);
 	ImGui_ImplOpenGL2_Init();
@@ -687,6 +686,7 @@ ____  ___        ____________________    _____ _____.___.
 
 	while ((!GetAsyncKeyState(VK_END) && !stop)) {
 		jobject world = env->GetObjectField(mc_instance, the_world_field);
+
 		bool is_world_null = world == nullptr;
 		env->DeleteLocalRef(world);
 
