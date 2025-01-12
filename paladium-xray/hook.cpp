@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <gl/GL.h>
 #include "imgui/imgui.h"
-#include "imgui/imgui_impl_opengl2.h"
+#include "imgui/imgui_impl_opengl3.h"
 #include "imgui/imgui_impl_win32.h"
 
 #include "hook.hpp"
@@ -48,20 +48,19 @@ void render_imgui(HDC hDc, RECT rect)
 	io.DisplaySize.y = rect.bottom - rect.top;
 
 	ImGui_ImplWin32_NewFrame();
-	ImGui_ImplOpenGL2_NewFrame();
+	ImGui_ImplOpenGL3_NewFrame();
 	ImGui::NewFrame();
-
+	
 	xray::render_gui();
 
 	ImGui::Render();
-	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 bool hook_wglSwapBuffers(HDC hDc)
 {
 	static HGLRC current_context = wglGetCurrentContext();
 	static HGLRC context = wglCreateContext(hDc);
-	static HGLRC twod_context = wglCreateContext(hDc);
 	static bool initialized = false;
 
 	HWND hwnd = WindowFromDC(hDc);
@@ -71,40 +70,19 @@ bool hook_wglSwapBuffers(HDC hDc)
 
 	if (!initialized)
 	{
-		wglMakeCurrent(hDc, twod_context);
-
-		GLint viewport[4];
-		glGetIntegerv(GL_VIEWPORT, viewport);
-		glViewport(0, 0, viewport[2], viewport[3]);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(0, viewport[2], viewport[3], 0, -1, 1);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		glDisable(GL_DEPTH_TEST);
+		ImGui::CreateContext();
+		ImGui_ImplWin32_InitForOpenGL(hwnd);
+		ImGui_ImplOpenGL3_Init();
 
 		initialized = true;
-		last_rect = rect;
-
-		ImGui_ImplOpenGL2_DestroyFontsTexture();
-		ImGui_ImplOpenGL2_CreateFontsTexture();
-
-		wglMakeCurrent(hDc, current_context);
-		return orig_wglSwapBuffers(hDc);
 	}
 
-	if (should_reinitialize(rect))
-	{
-		wglDeleteContext(context);
-		context = wglCreateContext(hDc);
-
-		initialized = false;
-		return hook_wglSwapBuffers(hDc);
-	}
-
-	wglMakeCurrent(hDc, twod_context);
-	render_imgui(hDc, rect);
 	wglMakeCurrent(hDc, context);
+
+
+	render_imgui(hDc, rect);
+
+	wglMakeCurrent(hDc, current_context);
 
 	glPushMatrix();
 	glMatrixMode(GL_PROJECTION);
@@ -114,9 +92,9 @@ bool hook_wglSwapBuffers(HDC hDc)
 	xray::render();
 	glPopMatrix();
 
-	wglMakeCurrent(hDc, current_context);
 	return orig_wglSwapBuffers(hDc);
 }
+
 
 static LRESULT WINAPI hook_WndProcHandle(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	if (xray::gui_open && ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))

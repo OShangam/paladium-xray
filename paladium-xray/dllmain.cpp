@@ -3,7 +3,7 @@
 
 void __stdcall MainRoutine(HMODULE hModule)
 {
-    Sleep(5000 + (rand() % 5000));
+    Sleep(300 + (rand() % 500));
     xray::initialize(hModule);
 }
 

@@ -12,7 +12,7 @@
 #include <mutex>
 #include "../imgui/imgui.h"
 #include "../imtheme.h"
-#include "../imgui/imgui_impl_opengl2.h"
+#include "../imgui/imgui_impl_opengl3.h"
 #include "../imgui/imgui_impl_win32.h"
 #include <iostream>
 
@@ -63,7 +63,6 @@ bool xray::gui_open;
 
 void xray::render()
 {
-
 	if (enabled && !xray::gui_open)
 	{
 		for (chunk chunk : chunks)
@@ -93,7 +92,6 @@ void xray::render()
 			}
 		}
 	}
-
 }
 
 void update_matrix()
@@ -336,7 +334,8 @@ void clear_chunks()
 
 	chunks.clear();
 }
-void xray::render_gui() {
+void xray::render_gui() 
+{
 	auto io = ImGui::GetIO();
 	ImGuiStyle& style = ImGui::GetStyle();
 
@@ -344,7 +343,7 @@ void xray::render_gui() {
 
 	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
 	ImGui::Begin(("X-ray"), NULL,
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar);
+		ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar);
 
 	ImGui::PushFont(font);
 
@@ -556,84 +555,8 @@ void xray::render_gui() {
 
 #include <dwmapi.h>
 
-std::string generateRandomNumbers(int count) {
-	std::string result;
-
-	srand(time(0));
-
-	for (int i = 0; i < count; ++i) {
-		int randomNum = std::rand() % 10;
-		result += std::to_string(randomNum);
-	}
-
-	return result;
-}
-
-void init_console() {
-	AllocConsole();
-	FILE* fp;
-	freopen_s(&fp, "CONOUT$", "w", stdout);
-
-	SetConsoleTitleA(generateRandomNumbers(5).c_str());
-
-	HWND hwnd = GetConsoleWindow();
-	if (hwnd) {
-		HMENU hmenu = GetSystemMenu(hwnd, FALSE);
-		EnableMenuItem(hmenu, SC_CLOSE, MF_GRAYED);
-		DWORD style = GetWindowLong(hwnd, GWL_STYLE);
-		style &= ~WS_MAXIMIZEBOX & ~WS_SIZEBOX & ~WS_SYSMENU;
-		SetWindowLong(hwnd, GWL_STYLE, style);
-		SetWindowPos(hwnd, NULL, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_FRAMECHANGED);
-	}
-
-	HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	CONSOLE_CURSOR_INFO cci;
-	GetConsoleCursorInfo(out, &cci);
-	cci.bVisible = false;
-	SetConsoleCursorInfo(out, &cci);
-
-	DWORD dw_mode = 0;
-	GetConsoleMode(out, &dw_mode);
-	SetConsoleMode(out, dw_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-
-	DWORD prev_mode = 0;
-	GetConsoleMode(out, &prev_mode);
-	SetConsoleMode(out, prev_mode & ~ENABLE_QUICK_EDIT_MODE);
-
-
-	CONSOLE_SCREEN_BUFFER_INFO info;
-	GetConsoleScreenBufferInfo(out, &info);
-	COORD new_size = {
-		info.srWindow.Right - info.srWindow.Left + 1,
-		info.srWindow.Bottom - info.srWindow.Top + 1
-	};
-	SetConsoleScreenBufferSize(out, new_size);
-}
-
 void xray::initialize(HMODULE handle)
 {
-	init_console();
-
-	HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	SetConsoleTextAttribute(out, 12);
-
-	std::cout << (R"(
-____  ___        ____________________    _____ _____.___.
-\   \/  /        \______   \______   \  /  _  \\__  |   |
- \     /   ______ |       _/|       _/ /  /_\  \/   |   |
- /     \  /_____/ |    |   \|    |   \/    |    \____   |
-/___/\  \         |____|_  /|____|_  /\____|__  / ______|
-      \_/                \/        \/         \/\/                                                                                                 
-    )") << std::endl;
-
-	SetConsoleTextAttribute(out, 7);
-
-	std::cout << "-> Process injected!" << std::endl;
-
-	std::cout << "-> Initializing X-Ray!" << std::endl;
-
 	ImGui::CreateContext();
 
 	HWND hwnd = FindWindowA("LWJGL", NULL);
@@ -642,10 +565,8 @@ ____  ___        ____________________    _____ _____.___.
 		exit(1);
 	}
 
-	//SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-
-	ImGui_ImplWin32_Init(hwnd);
-	ImGui_ImplOpenGL2_Init();
+	ImGui_ImplOpenGL3_Init();
+	ImGui_ImplWin32_InitForOpenGL(hwnd);
 
 	imtheme::init_theme();
 
@@ -675,28 +596,21 @@ ____  ___        ____________________    _____ _____.___.
 	config::download_file();
 	blocks::initialize();
 
-	std::cout << "-> X-Ray is now fully loaded! (HF)" << std::endl;
-
-	freopen("NUL", "w", stdout);
-	freopen("NUL", "w", stderr);
-
 	xray::gui_open = true;
 
 	int i = 2000;
 
 	while ((!GetAsyncKeyState(VK_END) && !stop)) {
 		jobject world = env->GetObjectField(mc_instance, the_world_field);
-
 		bool is_world_null = world == nullptr;
 		env->DeleteLocalRef(world);
 
-		if (is_world_null) {
+		if (is_world_null)
+		{
 			clear_chunks();
-
-			Sleep(100);
-		}
+			continue;
+		} 
 		else {
-
 			if (i > 2000) {
 				find_chunks();
 				i = 0;
@@ -718,6 +632,9 @@ ____  ___        ____________________    _____ _____.___.
 
 	clear_chunks();
 	hook::uninitialize_hooks();
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
 
 	FreeLibraryAndExitThread(handle, 0);
